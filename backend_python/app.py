@@ -3,10 +3,6 @@ from flask_cors import CORS
 from videojuegos import obtener_videojuegos
 import subprocess
 import os
-from chatbot import bot
-from chat_engine import ChatEngine
-import re
-from chat_session import chat
 
 app = Flask(__name__)
 CORS(app)
@@ -52,45 +48,6 @@ def consultar_prolog(goal):
     )
     return resultado.stdout.splitlines()
 
-engine = ChatEngine(
-    ejecutar_scala,
-    consultar_prolog
-)
-
-def detectar_presupuesto(texto):
-
-    numeros = re.findall(r'\d+\.?\d*', texto)
-
-    if numeros:
-        return float(numeros[0])
-
-    return None
-
-
-def contiene(texto, palabras):
-
-    texto = texto.lower()
-
-    return any(p in texto for p in palabras)
-
-
-def respuesta_tarjetas(titulo, juegos):
-
-    return jsonify({
-        "success": True,
-        "tipo": "cards",
-        "titulo": titulo,
-        "data": juegos
-    })
-
-
-def respuesta_texto(texto):
-
-    return jsonify({
-        "success": True,
-        "tipo": "texto",
-        "mensaje": texto
-    })
 
 # ============================================================
 #  RUTAS GENERALES
@@ -324,16 +281,46 @@ def prolog_desarrolladora():
 #  RUTAS PROLOG — MULTIJUGADOR Y COMPETITIVO
 # ============================================================
 
-@app.route("/chat", methods=["POST"])
-def chat():
+@app.route("/prolog/amigos")
+def prolog_amigos():
+    return jsonify(consultar_prolog("recomendado_para_amigos(X),write(X),nl,fail"))
 
-    datos = request.get_json()
+@app.route("/prolog/competitivo")
+def prolog_competitivo():
+    return jsonify(consultar_prolog("recomendado_para_competir(X),write(X),nl,fail"))
 
-    mensaje = datos.get("mensaje","")
+@app.route("/prolog/multijugador-competitivo")
+def prolog_multi_competitivo():
+    return jsonify(consultar_prolog("multijugador_competitivo(X),write(X),nl,fail"))
 
-    respuesta = engine.responder(mensaje)
 
-    return jsonify(respuesta)
+# ============================================================
+#  RUTAS PROLOG — CONSULTAS COMBINADAS
+# ============================================================
+
+@app.route("/prolog/rpg-pc")
+def prolog_rpg_pc():
+    return jsonify(consultar_prolog("rpg_en_pc(X),write(X),nl,fail"))
+
+@app.route("/prolog/shooter-pc")
+def prolog_shooter_pc():
+    return jsonify(consultar_prolog("shooter_en_pc(X),write(X),nl,fail"))
+
+@app.route("/prolog/accion-pc")
+def prolog_accion_pc():
+    return jsonify(consultar_prolog("accion_en_pc(X),write(X),nl,fail"))
+
+@app.route("/prolog/rockstar-pc")
+def prolog_rockstar_pc():
+    return jsonify(consultar_prolog("rockstar_en_pc(X),write(X),nl,fail"))
+
+@app.route("/prolog/similares")
+def prolog_similares():
+    juego = request.args.get("juego", "").lower().strip()
+    if not juego:
+        return jsonify({"error": "Falta el parámetro ?juego="}), 400
+    return jsonify(consultar_prolog(f"juegos_similares({juego},Y),write(Y),nl,fail"))
+
 
 # ============================================================
 
